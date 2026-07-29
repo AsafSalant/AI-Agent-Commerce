@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
+import { SIMULATION_USER_MODEL_NAME } from '../config/models';
 import { LlmClient } from '../agent/llm.client';
 import { asBoolean, asString, parseJsonObject } from './json';
 import type {
@@ -13,8 +13,6 @@ import { describeCardsForShopper } from './transcript';
 
 /** Turns of shopper/assistant exchange the simulator is allowed to look back on. */
 const MAX_SIMULATOR_HISTORY = 20;
-
-const DEFAULT_USER_MODEL = 'gpt-5.4-mini';
 
 /**
  * A shopper played by a fixed list of messages. Deterministic and free, so
@@ -163,17 +161,9 @@ export class LlmUserSimulator implements UserSimulator {
  */
 @Injectable()
 export class UserSimulatorFactory {
-  private readonly model: string;
+  private readonly model = SIMULATION_USER_MODEL_NAME;
 
-  constructor(
-    private readonly llm: LlmClient,
-    config: ConfigService,
-  ) {
-    this.model =
-      config.get<string>('SIMULATION_USER_MODEL') ??
-      config.get<string>('OPENAI_MODEL') ??
-      DEFAULT_USER_MODEL;
-  }
+  constructor(private readonly llm: LlmClient) {}
 
   create(persona: Persona): UserSimulator {
     return persona.script?.length

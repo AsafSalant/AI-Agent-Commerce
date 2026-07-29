@@ -25,10 +25,7 @@ export class DummyJsonClient {
   private readonly cache = new Map<string, CacheEntry<unknown>>();
 
   constructor(config: ConfigService) {
-    this.baseUrl = (config.get<string>('DUMMYJSON_BASE_URL') ?? 'https://dummyjson.com').replace(
-      /\/$/,
-      '',
-    );
+    this.baseUrl = 'https://dummyjson.com'
     this.timeoutMs = Number(config.get('DUMMYJSON_TIMEOUT_MS') ?? 10_000);
     this.ttlMs = Number(config.get('DUMMYJSON_CACHE_TTL_MS') ?? 5 * 60_000);
     this.maxRetries = Number(config.get('DUMMYJSON_MAX_RETRIES') ?? 2);

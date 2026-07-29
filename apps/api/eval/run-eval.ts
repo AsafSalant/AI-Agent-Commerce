@@ -22,6 +22,7 @@ import type { Product } from '@shopping-copilot/shared';
 import { AppModule } from '../src/app.module';
 import { ChatService } from '../src/chat/chat.service';
 import { ConversationsService } from '../src/conversations/conversations.service';
+import { AGENT_MODEL_NAME } from '../src/config/models';
 import type { CheckOutcome, TurnResult } from './checks';
 import { SCENARIOS, type EvalScenario } from './scenarios';
 
@@ -209,9 +210,7 @@ async function main(): Promise<void> {
   }
 
   console.log(
-    `${colors.bold}Shopping copilot evaluation${colors.reset} — model ${config.get(
-      'OPENAI_MODEL',
-    )}, ${scenarios.length} scenario(s)\n`,
+    `${colors.bold}Shopping copilot evaluation${colors.reset} — model ${AGENT_MODEL_NAME}, ${scenarios.length} scenario(s)\n`,
   );
 
   const startedAt = Date.now();
@@ -236,7 +235,7 @@ async function main(): Promise<void> {
   await writeFile(
     reportPath,
     JSON.stringify(
-      { model: config.get('OPENAI_MODEL'), ranAt: new Date().toISOString(), rate, reports },
+      { model: AGENT_MODEL_NAME, ranAt: new Date().toISOString(), rate, reports },
       null,
       2,
     ),

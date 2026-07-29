@@ -33,12 +33,35 @@ export function ChatView({
   onOpenSidebar,
 }: ChatViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Whether the viewport is pinned to the bottom. We only auto-scroll while
+  // pinned, so a shopper who scrolled up to read earlier products isn't yanked
+  // back down as tokens stream in.
+  const pinnedRef = useRef(true);
+  const prevMessageCount = useRef(messages.length);
 
-  // Keep the newest turn in view as text and product cards stream in.
-  useEffect(() => {
+  const handleScroll = () => {
     const container = scrollRef.current;
     if (!container) return;
-    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+    const distanceFromBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight;
+    pinnedRef.current = distanceFromBottom < 64;
+  };
+
+  // Keep the newest turn in view as text and product cards stream in. We set
+  // `scrollTop` directly (instant) instead of `scrollTo({ behavior: 'smooth' })`
+  // because text deltas arrive far faster than a smooth scroll resolves —
+  // queueing dozens of competing animations is what made the products judder.
+  useEffect(() => {
+    // A new persisted message means the user just sent a turn (or switched
+    // conversations); re-pin so the fresh content scrolls into view.
+    if (messages.length > prevMessageCount.current) {
+      pinnedRef.current = true;
+    }
+    prevMessageCount.current = messages.length;
+
+    const container = scrollRef.current;
+    if (!container || !pinnedRef.current) return;
+    container.scrollTop = container.scrollHeight;
   }, [messages, pending?.content, pending?.widgets.length, pending?.activities.length]);
 
   const showEmptyState = messages.length === 0 && !pending && !isLoading;
@@ -81,7 +104,7 @@ export function ChatView({
         </div>
       )}
 
-      <div ref={scrollRef} className="co-scrollbar flex-1 overflow-y-auto px-4 py-6">
+      <div ref={scrollRef} onScroll={handleScroll} className="co-scrollbar flex-1 overflow-y-auto px-4 py-6">
         <div className="mx-auto flex max-w-3xl flex-col gap-6">
           {showEmptyState ? (
             <EmptyState onPick={onSend} disabled={isSending} />

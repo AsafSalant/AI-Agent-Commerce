@@ -5,8 +5,7 @@
 
 # Running
 npm install
-cp .env.example .env      # then set OPENAI_API_KEY
-npm run dev               # API on :3001, web on :5173
+cp .env.example .env      # required: set OPENAI_API_KEY in .env
 
 # Open http://localhost:5173 and try *"I need a laptop for work under $1500"*.
 

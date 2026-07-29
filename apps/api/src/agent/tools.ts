@@ -3,13 +3,22 @@ import { randomUUID } from 'node:crypto';
 import type { ProductSearchFilters, ProductSearchResult } from '@shopping-copilot/shared';
 import { toModelProduct } from '../products/product.mapper';
 import type { ProductsService } from '../products/products.service';
+import type { MemoryService } from '../memory/memory.service';
 import type { ToolOutcome } from './agent.types';
 import { dataBlock } from './sanitize';
-import { noArgsSchema, productDetailsArgsSchema, searchProductsArgsSchema } from './tool.schemas';
+import {
+  forgetFactArgsSchema,
+  noArgsSchema,
+  productDetailsArgsSchema,
+  rememberFactArgsSchema,
+  searchProductsArgsSchema,
+} from './tool.schemas';
 
 export const SEARCH_PRODUCTS = 'search_products';
 export const GET_PRODUCT_DETAILS = 'get_product_details';
 export const LIST_CATEGORIES = 'list_categories';
+export const REMEMBER_FACT = 'remember_fact';
+export const FORGET_FACT = 'forget_fact';
 
 /** Only the compact `model` string crosses back to the model; the rest is ours. */
 const toModelOutput = (outcome: unknown) => ({
@@ -22,7 +31,7 @@ const toModelOutput = (outcome: unknown) => ({
  * constant because the tools close over the injected `ProductsService`, which
  * keeps retrieval, caching and the DummyJSON client under Nest DI.
  */
-export function createShoppingTools(products: ProductsService) {
+export function createShoppingTools(products: ProductsService, memory: MemoryService) {
   const search = createTool({
     id: SEARCH_PRODUCTS,
     description:
@@ -146,10 +155,59 @@ export function createShoppingTools(products: ProductsService) {
     },
   });
 
+  const remember = createTool({
+    id: REMEMBER_FACT,
+    description:
+      'Save a durable fact about the shopper that they asked you to remember — gender, clothing or shoe size, ' +
+      'brand preference, budget tendency, gift recipient, location, and the like. Call this whenever the shopper ' +
+      'states such a fact or explicitly says "remember …". Do not call it for preferences that only apply to the ' +
+      'current search. Re-stating a fact with the same key updates it.',
+    inputSchema: rememberFactArgsSchema,
+    toModelOutput,
+    execute: async (args): Promise<ToolOutcome> => {
+      const saved = await memory.remember(args.key, args.value);
+      if (!saved) {
+        return {
+          model: JSON.stringify({
+            saved: false,
+            reason:
+              'The key or value was empty or invalid. Use a short lowercase key like "gender" and a non-empty value.',
+          }),
+          resultCount: 0,
+          statusLabel: 'Could not save that',
+        };
+      }
+      return {
+        model: JSON.stringify({ saved: true, key: saved.key, value: saved.value }),
+        resultCount: 1,
+        statusLabel: `Remembered ${saved.key}`,
+      };
+    },
+  });
+
+  const forget = createTool({
+    id: FORGET_FACT,
+    description:
+      'Forget a stored fact about the shopper, e.g. when they say "forget that I\'m a male" or "you no longer need ' +
+      'to remember my size". Pass the key of the fact to drop.',
+    inputSchema: forgetFactArgsSchema,
+    toModelOutput,
+    execute: async (args): Promise<ToolOutcome> => {
+      const removed = await memory.forget(args.key);
+      return {
+        model: JSON.stringify({ forgotten: removed, key: args.key }),
+        resultCount: removed ? 1 : 0,
+        statusLabel: removed ? `Forgot ${args.key}` : `Nothing stored under ${args.key}`,
+      };
+    },
+  });
+
   return {
     [SEARCH_PRODUCTS]: search,
     [GET_PRODUCT_DETAILS]: details,
     [LIST_CATEGORIES]: categories,
+    [REMEMBER_FACT]: remember,
+    [FORGET_FACT]: forget,
   };
 }
 
@@ -170,6 +228,14 @@ export function describeToolCall(toolName: string, args: Record<string, unknown>
       return 'Looking up product details';
     case LIST_CATEGORIES:
       return 'Retrieving categories';
+    case REMEMBER_FACT: {
+      const key = typeof args.key === 'string' ? args.key.trim() : '';
+      return key ? `Remembering ${key}` : 'Remembering a fact';
+    }
+    case FORGET_FACT: {
+      const key = typeof args.key === 'string' ? args.key.trim() : '';
+      return key ? `Forgetting ${key}` : 'Forgetting a fact';
+    }
     default:
       return `Running ${toolName.replace(/_/g, ' ')}`;
   }

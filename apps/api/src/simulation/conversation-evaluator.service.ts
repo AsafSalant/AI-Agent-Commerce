@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { SIMULATION_JUDGE_MODEL_NAME } from '../config/models';
 import { LlmClient } from '../agent/llm.client';
 import { asBoolean, asString, parseJsonObject } from './json';
 import type {
@@ -11,8 +11,6 @@ import type {
   SimulatedConversation,
 } from './simulation.types';
 import { renderTranscriptForJudge } from './transcript';
-
-const DEFAULT_JUDGE_MODEL = 'gpt-5.4-mini';
 
 const JUDGE_PROMPT = [
   'You are a strict evaluator of an AI shopping assistant.',
@@ -56,17 +54,9 @@ interface JudgeVerdict {
 @Injectable()
 export class ConversationEvaluatorService {
   private readonly logger = new Logger(ConversationEvaluatorService.name);
-  private readonly model: string;
+  private readonly model = SIMULATION_JUDGE_MODEL_NAME;
 
-  constructor(
-    private readonly llm: LlmClient,
-    config: ConfigService,
-  ) {
-    this.model =
-      config.get<string>('SIMULATION_JUDGE_MODEL') ??
-      config.get<string>('OPENAI_MODEL') ??
-      DEFAULT_JUDGE_MODEL;
-  }
+  constructor(private readonly llm: LlmClient) {}
 
   async evaluate(
     conversation: SimulatedConversation,

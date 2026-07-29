@@ -3,6 +3,7 @@ import { ProductsService } from '../../products/products.service';
 import type { AgentEvent } from '../agent.types';
 import { ShoppingAgentService } from '../shopping-agent.service';
 import { FakeDummyJsonClient } from '../../../test/fakes/fake-dummyjson.client';
+import { FakeMemoryService } from '../../../test/fakes/fake-memory.service';
 import { ScriptedModel, type ScriptedResolver } from '../../../test/fakes/scripted-model';
 
 /** The verdict shape the injection classifier asks its model for. */
@@ -40,6 +41,7 @@ function buildAgent(guardScript: string | ScriptedResolver) {
   return {
     agent: new ShoppingAgentService(
       products,
+      new FakeMemoryService(),
       model,
       new ScriptedModel([{ text: 'T' }]),
       guard,

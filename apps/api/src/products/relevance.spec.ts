@@ -73,6 +73,35 @@ describe('scoreProduct', () => {
     expect(score).toBe(1);
     expect(matched).toEqual([]);
   });
+
+  it('does not stem "shoes" down to a fragment that matches unrelated words', () => {
+    const tokens = tokenize('shoes');
+
+    const sneakers = scoreProduct(
+      product({ title: 'Running Shoes', category: 'mens-shoes', tags: ['shoes'] }),
+      tokens,
+    );
+    const rolex = scoreProduct(
+      product({
+        title: 'Rolex Cellini Moonphase',
+        category: 'womens-watches',
+        description: 'Showcases the craftsmanship and elegance that Rolex is renowned for.',
+      }),
+      tokens,
+    );
+    const basketball = scoreProduct(
+      product({
+        title: 'Basketball',
+        category: 'sports-accessories',
+        description: 'Designed for dribbling, shooting, and passing in the game.',
+      }),
+      tokens,
+    );
+
+    expect(sneakers.matched).toEqual(['shoes']);
+    expect(rolex.matched).toEqual([]);
+    expect(basketball.matched).toEqual([]);
+  });
 });
 
 describe('looksLikeSeparateItems', () => {

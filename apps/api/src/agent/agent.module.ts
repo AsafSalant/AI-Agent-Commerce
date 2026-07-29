@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { MastraModelConfig } from '@mastra/core/llm';
+import { AGENT_MODEL_NAME, GUARD_MODEL_NAME, TITLE_MODEL_NAME } from '../config/models';
 import { ProductsModule } from '../products/products.module';
+import { MemoryModule } from '../memory/memory.module';
 import { LlmClient, OpenAiLlmClient } from './llm.client';
 import {
   AGENT_MODEL,
@@ -21,32 +23,20 @@ function routed(model: string): MastraModelConfig {
 }
 
 @Module({
-  imports: [ProductsModule],
+  imports: [ProductsModule, MemoryModule],
   providers: [
     // Retained for the simulation harness, whose shopper and judge talk to the
     // API directly rather than through the agent.
     { provide: LlmClient, useClass: OpenAiLlmClient },
-    {
-      provide: AGENT_MODEL,
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) =>
-        routed(config.get<string>('OPENAI_MODEL') ?? 'gpt-5.4-mini'),
-    },
-    {
-      provide: TITLE_MODEL,
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) =>
-        routed(config.get<string>('OPENAI_TITLE_MODEL') ?? 'gpt-5.4-nano'),
-    },
+    { provide: AGENT_MODEL, useValue: routed(AGENT_MODEL_NAME) },
+    { provide: TITLE_MODEL, useValue: routed(TITLE_MODEL_NAME) },
     {
       provide: GUARD_MODEL,
       inject: [ConfigService],
       // The injection classifier costs one small call per turn, so it is opt-out
       // for local runs and evaluation sweeps.
       useFactory: (config: ConfigService) =>
-        config.get<string>('AGENT_GUARDRAILS') === 'off'
-          ? null
-          : routed(config.get<string>('OPENAI_GUARD_MODEL') ?? 'gpt-5.4-nano'),
+        config.get<string>('AGENT_GUARDRAILS') === 'off' ? null : routed(GUARD_MODEL_NAME),
     },
     {
       provide: MASTRA_PLATFORM_ACCESS_TOKEN,

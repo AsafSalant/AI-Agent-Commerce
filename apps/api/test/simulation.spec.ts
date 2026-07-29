@@ -1,4 +1,3 @@
-import { ConfigService } from '@nestjs/config';
 import { ShoppingAgentService } from '../src/agent/shopping-agent.service';
 import { GET_PRODUCT_DETAILS, SEARCH_PRODUCTS } from '../src/agent/tools';
 import type { DummyJsonClient } from '../src/products/dummyjson.client';
@@ -15,6 +14,7 @@ import {
   type Scenario,
 } from '../src/simulation';
 import { FakeDummyJsonClient } from './fakes/fake-dummyjson.client';
+import { FakeMemoryService } from './fakes/fake-memory.service';
 import {
   RoutedLlmClient,
   routedAgentModel,
@@ -25,10 +25,10 @@ import { ScriptedModel } from './fakes/scripted-model';
 
 function createHarness(handler: RoutedHandler) {
   const llm = new RoutedLlmClient(handler);
-  const config = new ConfigService({ OPENAI_MODEL: 'test-model' });
   const products = new ProductsService(new FakeDummyJsonClient() as unknown as DummyJsonClient);
   const agent = new ShoppingAgentService(
     products,
+    new FakeMemoryService(),
     routedAgentModel(handler),
     new ScriptedModel([{ text: 'Simulated conversation' }]),
     null,
@@ -37,9 +37,9 @@ function createHarness(handler: RoutedHandler) {
   );
 
   const harness = new ConversationSimulatorService(
-    new UserSimulatorFactory(llm, config),
+    new UserSimulatorFactory(llm),
     new ShoppingAgentUnderTest(agent),
-    new ConversationEvaluatorService(llm, config),
+    new ConversationEvaluatorService(llm),
   );
 
   return { harness, llm };

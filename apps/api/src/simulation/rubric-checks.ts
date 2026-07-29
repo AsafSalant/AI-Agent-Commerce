@@ -78,6 +78,20 @@ export const check = {
     };
   },
 
+  /** The UI rendered no product cards at all over the conversation. */
+  showedNoProducts(): RubricCheck {
+    return (conversation) => {
+      const count = shownProducts(conversation).length;
+      return {
+        passed: count === 0,
+        reasoning:
+          count === 0
+            ? 'No product cards were shown.'
+            : `${count} product card(s) were shown; none expected.`,
+      };
+    };
+  },
+
   /** Every product card respected the shopper's budget. */
   shownProductsUnder(maxPrice: number): RubricCheck {
     return (conversation) => {

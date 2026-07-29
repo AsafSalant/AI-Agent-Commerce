@@ -9,6 +9,7 @@ import type {
   ToolTraceEntry,
 } from '@shopping-copilot/shared';
 import { ProductsService } from '../products/products.service';
+import { MemoryService } from '../memory/memory.service';
 import type { AgentEvent, AgentRunOptions, ToolOutcome } from './agent.types';
 import {
   AGENT_MODEL,
@@ -50,6 +51,7 @@ export class ShoppingAgentService {
 
   constructor(
     private readonly products: ProductsService,
+    private readonly memory: MemoryService,
     @Inject(AGENT_MODEL) model: MastraModelConfig,
     @Inject(TITLE_MODEL) titleModel: MastraModelConfig,
     @Inject(GUARD_MODEL) guardModel: MastraModelConfig | null,
@@ -58,7 +60,7 @@ export class ShoppingAgentService {
   ) {
     const { agent, titleAgent } = createShoppingMastra({
       model,
-      tools: createShoppingTools(products),
+      tools: createShoppingTools(products, memory),
       titleModel,
       ...(guardModel ? { guardModel } : {}),
       ...(platformAccessToken && platformProjectId
@@ -87,9 +89,11 @@ export class ShoppingAgentService {
       now: new Date(),
       ...(options.timeZone ? { timeZone: options.timeZone } : {}),
     });
+    const memoryBlock = (await this.memory.describeFacts()) ?? '';
+    const prefix = memoryBlock ? `${context}\n\n${memoryBlock}` : context;
     const messages: CoreMessage[] = [
       ...this.toModelMessages(history),
-      { role: 'user', content: `${context}\n\n${sanitizeShopperInput(userContent)}` },
+      { role: 'user', content: `${prefix}\n\n${sanitizeShopperInput(userContent)}` },
     ];
 
     const widgets: MessageWidget[] = [];

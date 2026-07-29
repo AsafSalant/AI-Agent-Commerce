@@ -1,5 +1,10 @@
 import { MAX_SEARCH_LIMIT } from '../../products/products.service';
-import { productDetailsArgsSchema, searchProductsArgsSchema } from '../tool.schemas';
+import {
+  forgetFactArgsSchema,
+  productDetailsArgsSchema,
+  rememberFactArgsSchema,
+  searchProductsArgsSchema,
+} from '../tool.schemas';
 
 function search(args: Record<string, unknown>) {
   return searchProductsArgsSchema.parse(args);
@@ -50,5 +55,29 @@ describe('productDetailsArgsSchema', () => {
   it('rejects an id that is not a positive integer', () => {
     expect(() => productDetailsArgsSchema.parse({ product_id: 0 })).toThrow();
     expect(() => productDetailsArgsSchema.parse({ product_id: 'the blue one' })).toThrow();
+  });
+});
+
+describe('rememberFactArgsSchema', () => {
+  it('accepts a short key and a value', () => {
+    expect(rememberFactArgsSchema.parse({ key: 'gender', value: 'male' })).toEqual({
+      key: 'gender',
+      value: 'male',
+    });
+  });
+
+  it('rejects an empty key or value', () => {
+    expect(() => rememberFactArgsSchema.parse({ key: '', value: 'male' })).toThrow();
+    expect(() => rememberFactArgsSchema.parse({ key: 'gender', value: '' })).toThrow();
+  });
+});
+
+describe('forgetFactArgsSchema', () => {
+  it('accepts a key to drop', () => {
+    expect(forgetFactArgsSchema.parse({ key: 'gender' })).toEqual({ key: 'gender' });
+  });
+
+  it('rejects an empty key', () => {
+    expect(() => forgetFactArgsSchema.parse({ key: '' })).toThrow();
   });
 });

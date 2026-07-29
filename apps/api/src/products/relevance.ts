@@ -71,18 +71,37 @@ export function tokenize(query: string): string[] {
     .filter((token) => token.length > 1 && !STOP_WORDS.has(token));
 }
 
-/** Naive singular form so "phones" matches "phone" and vice versa. */
+/**
+ * Naive singular form so "phones" matches "phone" and vice versa. Only strips
+ * "es" when the word actually needs it for its plural (box/watch/glass style
+ * endings) — otherwise "shoes" would stem to "sho", a 3-letter fragment that
+ * substring-matches unrelated words like "showcases" or "shooting".
+ */
 function variants(token: string): string[] {
   const forms = new Set([token]);
-  if (token.endsWith('ies') && token.length > 4) forms.add(`${token.slice(0, -3)}y`);
-  if (token.endsWith('es') && token.length > 4) forms.add(token.slice(0, -2));
-  if (token.endsWith('s') && token.length > 3) forms.add(token.slice(0, -1));
+  if (token.endsWith('ies') && token.length > 4) {
+    forms.add(`${token.slice(0, -3)}y`);
+  } else if (token.length > 4 && /(?:ch|sh|ss|x|z)es$/.test(token)) {
+    forms.add(token.slice(0, -2));
+  } else if (token.endsWith('s') && token.length > 3) {
+    forms.add(token.slice(0, -1));
+  }
   forms.add(`${token}s`);
   return [...forms];
 }
 
+/**
+ * Word-boundary aware "contains" check. Plain substring matching lets short
+ * stemmed forms (e.g. "cat") match inside unrelated words ("category",
+ * "concatenate"), so this only matches at the start of a word — enough to
+ * still catch compounds like "shoe" inside "shoemaker".
+ */
 function includesAny(haystack: string, forms: string[]): boolean {
-  return forms.some((form) => haystack.includes(form));
+  return forms.some((form) => new RegExp(`(?:^|[^a-z0-9])${escapeRegExp(form)}`).test(haystack));
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 export interface RelevanceScore {

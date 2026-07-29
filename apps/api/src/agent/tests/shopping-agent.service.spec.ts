@@ -5,6 +5,7 @@ import { ProductsService } from '../../products/products.service';
 import type { AgentEvent } from '../agent.types';
 import { ShoppingAgentService } from '../shopping-agent.service';
 import { FakeDummyJsonClient } from '../../../test/fakes/fake-dummyjson.client';
+import { FakeMemoryService } from '../../../test/fakes/fake-memory.service';
 import {
   ScriptedModel,
   type ScriptedResolver,
@@ -15,19 +16,23 @@ import { PRODUCT_FIXTURES } from '../../../test/fixtures/products.fixture';
 interface AgentOptions {
   /** What the title model replies, or a resolver that can fail. */
   title?: ScriptedTurn[] | ScriptedResolver;
+  /** Memory service backing the agent; defaults to an empty fake store. */
+  memory?: FakeMemoryService;
 }
 
 function buildAgent(script: ScriptedTurn[] | ScriptedResolver, options: AgentOptions = {}) {
   const catalog = new FakeDummyJsonClient();
   const products = new ProductsService(catalog as unknown as DummyJsonClient);
+  const memory = options.memory ?? new FakeMemoryService();
   const model = new ScriptedModel(script, 'test-model');
   const titleModel = new ScriptedModel(options.title ?? [{ text: 'Shopping' }], 'test-nano');
 
   return {
-    agent: new ShoppingAgentService(products, model, titleModel, null, null, null),
+    agent: new ShoppingAgentService(products, memory, model, titleModel, null, null, null),
     model,
     titleModel,
     catalog,
+    memory,
   };
 }
 
@@ -182,13 +187,15 @@ describe('ShoppingAgentService', () => {
     expect(toolMessage?.content).toContain('</product_data>');
   });
 
-  it('exposes the three catalog tools to the model', async () => {
+  it('exposes the catalog and memory tools to the model', async () => {
     const { agent, model } = buildAgent([{ text: 'Hello!' }]);
     await collect(agent.run([], 'hi'));
 
     expect(model.requests[0].toolNames.sort()).toEqual([
+      'forget_fact',
       'get_product_details',
       'list_categories',
+      'remember_fact',
       'search_products',
     ]);
   });
@@ -387,6 +394,71 @@ describe('ShoppingAgentService', () => {
     expect(result.toolTrace[0]).toMatchObject({ name: 'buy_product', resultCount: 0 });
     expect(result.toolTrace[0].error).toBeDefined();
     expect(result.content).toBe('I can only help you browse.');
+  });
+
+  describe('long-term memory', () => {
+    it('injects stored facts as a <memory> block ahead of the shopper message', async () => {
+      const memory = new FakeMemoryService([
+        { key: 'gender', value: 'male', updatedAt: '2026-07-29T12:00:00.000Z' },
+      ]);
+      const { agent, model } = buildAgent([{ text: 'Got it.' }], { memory });
+
+      await collect(agent.run([], 'show me shirts'));
+
+      const turn = model.requests[0].messages.at(-1)?.content ?? '';
+      expect(turn).toContain('<memory>');
+      expect(turn).toContain('- gender: male');
+      // The memory block rides with the per-turn context, ahead of the message.
+      expect(turn.indexOf('<memory>')).toBeLessThan(turn.indexOf('show me shirts'));
+    });
+
+    it('omits the <memory> block when nothing is stored', async () => {
+      const { agent, model } = buildAgent([{ text: 'Hello!' }]);
+      await collect(agent.run([], 'hi'));
+      expect(model.requests[0].messages.at(-1)?.content).not.toContain('<memory>');
+    });
+
+    it('persists a fact when the model calls remember_fact', async () => {
+      const { agent, memory } = buildAgent([
+        { toolCalls: [{ name: 'remember_fact', args: { key: 'gender', value: 'male' } }] },
+        { text: 'Got it — I will remember you are looking for men\'s items.' },
+      ]);
+
+      const result = resultOf(await collect(agent.run([], "I'm a male, remember that")));
+
+      expect(memory.rememberCalls).toEqual([{ key: 'gender', value: 'male' }]);
+      expect(await memory.list()).toContainEqual(
+        expect.objectContaining({ key: 'gender', value: 'male' }),
+      );
+      expect(result.toolTrace[0]).toMatchObject({
+        name: 'remember_fact',
+        resultCount: 1,
+        label: 'Remembered gender',
+      });
+    });
+
+    it('drops a fact when the model calls forget_fact', async () => {
+      const memory = new FakeMemoryService([
+        { key: 'gender', value: 'male', updatedAt: '2026-07-29T12:00:00.000Z' },
+      ]);
+      const { agent } = buildAgent(
+        [
+          { toolCalls: [{ name: 'forget_fact', args: { key: 'gender' } }] },
+          { text: 'Done — I have forgotten that.' },
+        ],
+        { memory },
+      );
+
+      const result = resultOf(await collect(agent.run([], 'forget that I am male')));
+
+      expect(memory.forgetCalls).toEqual(['gender']);
+      expect(await memory.list()).toEqual([]);
+      expect(result.toolTrace[0]).toMatchObject({
+        name: 'forget_fact',
+        resultCount: 1,
+        label: 'Forgot gender',
+      });
+    });
   });
 
   describe('generateTitle', () => {

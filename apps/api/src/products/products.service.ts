@@ -108,10 +108,19 @@ export class ProductsService {
               `its result slots between them.`,
           );
         }
-      } else if (category) {
-        notes.push(
-          `Nothing in "${category}" matched "${query}", so the category's top-rated products are shown.`,
-        );
+      } else {
+        // The query matched nothing. Returning the category's (or catalog's)
+        // top-rated products as a fallback would surface unrelated items —
+        // dresses for "sweatshirts", watches for "shoes" — and mislead the
+        // shopper into thinking the store carries what they asked for. Return
+        // empty instead so the agent can say so plainly and suggest the
+        // closest category.
+        ranked = [];
+        if (category) {
+          notes.push(`Nothing in "${category}" matched "${query}".`);
+        } else {
+          notes.push(`No products matched "${query}".`);
+        }
       }
     }
 

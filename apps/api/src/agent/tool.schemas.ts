@@ -85,3 +85,29 @@ export const productDetailsArgsSchema = z.object({
 });
 
 export const noArgsSchema = z.object({});
+
+export const rememberFactArgsSchema = z.object({
+  key: z
+    .string()
+    .trim()
+    .min(1)
+    .max(40)
+    .describe(
+      'Short lowercase slug identifying which kind of fact this is, e.g. "gender", "shirt_size", "shoe_size", "favorite_brand", "budget_ceiling". Re-stating a fact with the same key updates it.',
+    ),
+  value: z
+    .string()
+    .trim()
+    .min(1)
+    .max(200)
+    .describe('The fact itself, as the shopper worded it, e.g. "male", "L", "US 10", "Apple".'),
+});
+
+export const forgetFactArgsSchema = z.object({
+  key: z
+    .string()
+    .trim()
+    .min(1)
+    .max(40)
+    .describe('The key of the fact to forget, e.g. "gender".'),
+});

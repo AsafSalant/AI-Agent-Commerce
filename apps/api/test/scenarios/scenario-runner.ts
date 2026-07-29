@@ -5,10 +5,12 @@ import { config as loadEnv } from 'dotenv';
 import { OpenAiLlmClient } from '../../src/agent/llm.client';
 import { ShoppingAgentService } from '../../src/agent/shopping-agent.service';
 import { ENV_FILE_PATHS } from '../../src/config/env';
+import { AGENT_MODEL_NAME } from '../../src/config/models';
 import type { DummyJsonClient } from '../../src/products/dummyjson.client';
 import { ProductsService } from '../../src/products/products.service';
 import { buildSimulatedMessage, ShoppingAgentUnderTest } from '../../src/simulation';
 import { FakeDummyJsonClient } from '../fakes/fake-dummyjson.client';
+import { FakeMemoryService } from '../fakes/fake-memory.service';
 import { ScriptedModel } from '../fakes/scripted-model';
 import { AgentEvaluator, renderTranscript, type ScenarioVerdict } from './agent-evaluator';
 import { MockUserAgent } from './mock-user.agent';
@@ -111,11 +113,12 @@ function getHarness(): LiveHarness {
 
   const config = new ConfigService();
   const llm = new OpenAiLlmClient(config);
-  const model = config.get<string>('OPENAI_MODEL') ?? 'gpt-5.4-mini';
+  const model = AGENT_MODEL_NAME;
 
   const products = new ProductsService(new FakeDummyJsonClient() as unknown as DummyJsonClient);
   const agent = new ShoppingAgentService(
     products,
+    new FakeMemoryService(),
     `openai/${model}` as MastraModelConfig,
     new ScriptedModel([]), // the title model is never exercised by scenarios
     null, // no injection classifier: one less live call per turn

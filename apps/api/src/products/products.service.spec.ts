@@ -113,11 +113,11 @@ describe('ProductsService', () => {
       expect(result.notes).toEqual([]);
     });
 
-    it('keeps a category browse alive when the query matches nothing in it', async () => {
+    it('returns no products when the query matches nothing in a category', async () => {
       const result = await service.search({ category: 'beauty', query: 'quantum' });
 
-      expect(result.products.length).toBeGreaterThan(0);
-      expect(result.notes.join(' ')).toContain('Nothing in "beauty" matched');
+      expect(result.products).toEqual([]);
+      expect(result.notes.join(' ')).toContain('Nothing in "beauty" matched "quantum"');
     });
 
     it('computes the discounted price and normalises missing fields', async () => {
