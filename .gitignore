@@ -1,0 +1,35 @@
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Local secrets
+.env
+.env.local
+.env.*.local
+
+# Runtime conversation store
+data/
+apps/api/data/
+apps/api/.playwright-data/
+
+# Generated test artifacts (e2e/screenshots is kept: the README links to it)
+apps/api/eval/report.json
+apps/api/simulation-report.json
+apps/web/test-results/
+apps/web/playwright-report/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+
+.env
+.env.example

@@ -1,0 +1,29 @@
+{
+  "name": "shopping-copilot",
+  "private": true,
+  "version": "1.0.0",
+  "description": "AI shopping agent: conversational product discovery over the DummyJSON catalog",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "build:shared": "npm run build -w @shopping-copilot/shared",
+    "dev": "npm run build:shared && concurrently -n api,web -c blue,magenta \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "npm run dev -w @shopping-copilot/api",
+    "dev:web": "npm run dev -w @shopping-copilot/web",
+    "build": "npm run build:shared && npm run build -w @shopping-copilot/api && npm run build -w @shopping-copilot/web",
+    "start": "npm run start -w @shopping-copilot/api",
+    "test": "npm run build:shared && npm run test -w @shopping-copilot/api",
+    "test:api": "npm run build:shared && npm run test -w @shopping-copilot/api",
+    "eval": "npm run build:shared && npm run eval -w @shopping-copilot/api",
+    "simulate": "npm run build:shared && npm run simulate -w @shopping-copilot/api",
+    "typecheck": "npm run build:shared && npm run typecheck -w @shopping-copilot/api && npm run typecheck -w @shopping-copilot/web"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
