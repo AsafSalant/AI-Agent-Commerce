@@ -15,10 +15,6 @@ npm run dev               # API on :3001, web on :5173
 npm run simulate          # Multi-turn conversation simulation test (real model, LLM-graded) — needs OPENAI_API_KEY
 ```
 
-`npm test` stays offline by design: the live scenario suite skips itself
-without an API key, so CI runs without paid calls. See the *Evaluation*
-section below for what the suites cover.
-
 ## Architecture & framework choice
 
 I used Mastra for the agent core because of some key features, and also because I want to learn something new 🙂
