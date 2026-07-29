@@ -29,7 +29,3 @@ npm-debug.log*
 .idea/
 .vscode/*
 !.vscode/extensions.json
-
-
-.env
-.env.example
